@@ -91,7 +91,7 @@ const Game = () => {
   const onPlayerJoined = (data) => {
     joinedRef.current = data.playerId;
     setIsPlayerJoined(data.playerId);
-  }
+  };
 
   const initializeWs = (gameId, playerId) => {
     if (gameId && playerId) {
@@ -162,26 +162,22 @@ const Game = () => {
   };
 
   const handleJoin = async (gameId) => {
-    try {
-      const { playerId, maxRounds } = await joinGame(gameId);
-      setGameId(gameId);
-      setPlayerId(playerId);
-      setGridState({
-        grid: Array(maxRounds)
-          .fill("")
-          .map(() => Array(5).fill("")),
-        feedback: Array(maxRounds).fill([]),
-        currentRow: 0,
-      });
-      setShowOnboarding(false);
-      setGameOver(false);
-      setCurrentGuess("");
-      setKeyFrequency(keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {}));
+    const { playerId, maxRounds } = await joinGame(gameId);
+    setGameId(gameId);
+    setPlayerId(playerId);
+    setGridState({
+      grid: Array(maxRounds)
+        .fill("")
+        .map(() => Array(5).fill("")),
+      feedback: Array(maxRounds).fill([]),
+      currentRow: 0,
+    });
+    setShowOnboarding(false);
+    setGameOver(false);
+    setCurrentGuess("");
+    setKeyFrequency(keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {}));
 
-      initializeWs(gameId, playerId);
-    } catch (error) {
-      console.error("Error joining game:", error);
-    }
+    initializeWs(gameId, playerId);
   };
 
   // Handle virtual and physical key presses

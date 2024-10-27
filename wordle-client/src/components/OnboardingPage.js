@@ -1,4 +1,5 @@
-import React, { useState, useRef, Fragment } from "react";
+import React, { useEffect, useState, useRef, Fragment } from "react";
+import Snackbar from "./Snackbar";
 import "./OnboardingPage.css";
 
 // Component for the onboarding page
@@ -6,7 +7,22 @@ const OnboardingPage = ({ onStart, onJoin }) => {
   const roomRef = useRef(null);
   const wordRef = useRef(null);
 
+  const [errorState, setErrorState] = useState({ show: false, message: "" });
+  const [canJoin, setCanJoin] = useState(false);
+  const [canStart, setCanStart] = useState(false);
   const [isMultiPlayer, setIsMultiPlayer] = useState(false);
+
+  const dismissError = () => {
+    setErrorState({ show: false, message: "" });
+  };
+
+  const handleWordChange = (e) => {
+    setCanStart(e.target.value.length === 5);
+  };
+
+  const handleRoomChange = (e) => {
+    setCanJoin(e.target.value.length > 0);
+  };
 
   const goBack = () => {
     setIsMultiPlayer(false);
@@ -17,17 +33,50 @@ const OnboardingPage = ({ onStart, onJoin }) => {
     setIsMultiPlayer(true);
   };
 
-  const startMultiPlayerGame = () => {
-    onStart(wordRef.current.value);
+  const startMultiPlayerGame = async () => {
+    try {
+      onStart(wordRef.current.value);
+    } catch (error) {
+      setErrorState({
+        show: true,
+        message: "Unknown error occurred, please try again later",
+      });
+    }
   };
 
-  const startSoloGame = () => {
-    onStart("");
+  const startSoloGame = async () => {
+    try {
+      onStart("");
+    } catch (error) {
+      setErrorState({
+        show: true,
+        message: "Unknown error occurred, please try again later",
+      });
+    }
   };
 
-  const joinGame = () => {
-    onJoin(roomRef.current.value);
+  const joinGame = async () => {
+    try {
+      await onJoin(roomRef.current.value);
+    } catch (error) {
+      if (error.message.includes("404")) {
+        setErrorState({ show: true, message: "Room not found" });
+      } else {
+        setErrorState({
+          show: true,
+          message: "Unknown error occurred, please try again later",
+        });
+      }
+    }
   };
+
+  useEffect(() => {
+    if (errorState.show) {
+      setTimeout(() => {
+        dismissError();
+      }, 3000);
+    }
+  }, [errorState.show]);
 
   return (
     <div className="onboarding">
@@ -60,12 +109,14 @@ const OnboardingPage = ({ onStart, onJoin }) => {
             <input
               type="text"
               ref={roomRef}
+              onChange={handleRoomChange}
               placeholder="Enter room code"
               className="room-input"
             />
             <button
               style={{ marginTop: "40px" }}
               className="join-button"
+              disabled={!canJoin}
               onClick={joinGame}
             >
               Join Room
@@ -75,12 +126,14 @@ const OnboardingPage = ({ onStart, onJoin }) => {
             <input
               type="text"
               ref={wordRef}
+              onChange={handleWordChange}
               placeholder="Enter words"
               className="room-input"
             />
             <button
               className="play-button"
               style={{ marginTop: "40px" }}
+              disabled={!canStart}
               onClick={startMultiPlayerGame}
             >
               Start New Room
@@ -92,6 +145,12 @@ const OnboardingPage = ({ onStart, onJoin }) => {
           </button>
         </Fragment>
       )}
+
+      <Snackbar
+        message={errorState.message}
+        isOpen={errorState.show}
+        onClose={dismissError}
+      />
     </div>
   );
 };
