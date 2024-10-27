@@ -15,7 +15,7 @@ const startGame = (req, res) => {
 
   games[gameId] = game;
 
-  res.json({ gameId, playerId });
+  res.json({ gameId, playerId, maxRounds });
 };
 
 // Allow a player to join an existing game
@@ -47,9 +47,13 @@ const submitGuess = (req, res) => {
 
   // Broadcast the result to all players in the game
   const clients = getClients();
+  console.log(clients);
+  console.log(gameId);
   if (clients[gameId]) {
+    console.log(clients);
+    console.log(clients[gameId]);
     Object.values(clients[gameId]).forEach(client => {
-      client.send(JSON.stringify({ playerId, guess, feedback: result.feedback, gameOver: result.gameOver }));
+      client.send(JSON.stringify({ type: 'guessResult', playerId, guess, feedback: result.feedback, gameOver: result.gameOver }));
     });
   }
 

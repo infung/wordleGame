@@ -10,7 +10,7 @@ export const startGame = async () => {
 };
 
 // Function to submit a guess
-export const submitGuess = async (gameId, guess) => {
-  const response = await axios.post(`${API_URL}/api/guess`, { gameId, guess });
+export const submitGuess = async (gameId, playerId, guess) => {
+  const response = await axios.post(`${API_URL}/api/guess`, { gameId, playerId, guess });
   return response.data; // Return feedback
 };

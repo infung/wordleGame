@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import OnboardingPage from './OnboardingPage';
 import { startGame, submitGuess } from '../api';
 import './Game.css';
@@ -6,16 +6,26 @@ import './Game.css';
 const Game = () => {
   // State variables
   const [showOnboarding, setShowOnboarding] = useState(true);
-  const [grid, setGrid] = useState(Array(6).fill('').map(() => Array(5).fill('')));
-  const [currentRow, setCurrentRow] = useState(0);
-  const [currentGuess, setCurrentGuess] = useState('');
-  const [feedback, setFeedback] = useState(Array(6).fill([]));
+  const keys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('');
   const [gameOver, setGameOver] = useState(false);
   const [gameId, setGameId] = useState(null);
-  const keys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('');
+  const [playerId, setPlayerId] = useState(null);
+  // const [grid, setGrid] = useState();
+  // const [currentRow, setCurrentRow] = useState(0);
+  const [currentGuess, setCurrentGuess] = useState('');
+  // const [feedback, setFeedback] = useState();
+  const [gridState, setGridState] = useState({
+    currentRow: 0,
+    feedback: Array(6).fill([]),
+    grid: Array(6).fill('').map(() => Array(5).fill(''))
+  });
+  const gridRef = useRef(gridState);
+  const guessRef = useRef(currentGuess);
+
   const [keyFrequency, setKeyFrequency] = useState(
     keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {})
   );
+  const ws = useRef(null);
 
   // Effect to handle physical keyboard input
   useEffect(() => {
@@ -30,19 +40,70 @@ const Game = () => {
     };
   }, [currentGuess, gameOver, showOnboarding]);
 
+  const initializeWs = (gameId, playerId) => {
+    if (gameId && playerId) {
+      ws.current = new WebSocket('ws://localhost:3001');
+
+      ws.current.onopen = () => {
+        console.log('WebSocket connected');
+
+        ws.current.send(JSON.stringify({ type: 'join', gameId, playerId }));
+      };
+
+      ws.current.onmessage = async (event) => {
+        const { playerId, feedback, gameOver } = JSON.parse(event.data);
+        const { currentRow, grid } = gridRef.current;
+
+        const guess = guessRef.current;
+
+        // Update grid
+        const newGrid = [...grid];
+        newGrid[currentRow] = guess.split('');
+
+        // Merge feedback
+        const updatedFeedback = [...gridRef.current.feedback];
+        updatedFeedback[currentRow] = feedback;
+
+        const updatedGridState = {
+          grid: newGrid,
+          feedback: updatedFeedback,
+          currentRow: gameOver ? currentRow : currentRow + 1,
+        };
+        setGridState(updatedGridState);
+        gridRef.current = updatedGridState;
+
+        if (gameOver) {
+          setGameOver(true); // End game if over
+        } else {
+          guessRef.current = ''
+          setCurrentGuess('')
+        }
+      };
+  
+      ws.current.onclose = () => {
+        console.log('WebSocket disconnected');
+      };
+    }
+  }
+
   // Start a new game
   const handleStart = async () => {
     try {
-      const { id, maxRounds } = await startGame();
+      const { gameId, maxRounds, playerId } = await startGame();
       // Initialize game state
-      setGameId(id);
-      setGrid(Array(maxRounds).fill('').map(() => Array(5).fill('')));
+      setGameId(gameId);
+      setPlayerId(playerId)
+      setGridState({
+        grid: Array(maxRounds).fill('').map(() => Array(5).fill('')),
+        feedback: Array(maxRounds).fill([]),
+        currentRow: 0,
+      });
       setShowOnboarding(false);
       setGameOver(false);
-      setCurrentRow(0);
       setCurrentGuess('');
-      setFeedback(Array(maxRounds).fill([]));
       setKeyFrequency(keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {}));
+
+      initializeWs(gameId, playerId);
     } catch (error) {
       console.error("Error starting the game:", error);
     }
@@ -80,6 +141,8 @@ const Game = () => {
 
 // Update grid with the current guess
   useEffect(() => {
+    const { currentRow, grid } = gridState
+
     const newGrid = [...grid];
     // Clear the current row first
     newGrid[currentRow] = Array(5).fill('');
@@ -87,36 +150,33 @@ const Game = () => {
     currentGuess.split('').forEach((letter, index) => {
       newGrid[currentRow][index] = letter;
     });
-    setGrid(newGrid);
-  }, [currentGuess, currentRow]);
+    // setGrid(newGrid);
+    setGridState({
+      ...gridState,
+      grid: newGrid,
+    })
+  }, [currentGuess, gridState.currentRow]);
 
   // Submit the current guess to the server
   const handleSubmit = async () => {
     try {
-      const result = await submitGuess(gameId, currentGuess);
-      console.log(result)
-      // Update grid
-      const newGrid = [...grid];
-      newGrid[currentRow] = currentGuess.split('');
-      setGrid(newGrid);
-      // Merge feedback
-      const updatedFeedback = [...feedback];
-      updatedFeedback[currentRow] = result.feedback;
-      setFeedback(updatedFeedback);
-
-      if (result.gameOver) {
-        setGameOver(true); // End game if over
-      } else {
-        setCurrentRow(currentRow + 1); // Move to next row
-        setCurrentGuess(''); // Reset current guess
-      }
+      const result = await submitGuess(gameId, playerId, currentGuess);
     } catch (error) {
       console.error("Error submitting guess:", error);
     }
   };
 
+  useEffect(() => {
+    gridRef.current = gridState
+  }, [gridState]);
+
+  useEffect(() => {
+    guessRef.current = currentGuess;
+  }, [currentGuess]);
+
   // Render the game grid
   const renderGrid = () => {
+    const { currentRow, feedback, grid } = gridState;
     return grid.map((row, rowIndex) => (
       <div key={rowIndex} className="grid-row">
         {row.map((cell, cellIndex) => (
@@ -169,7 +229,6 @@ const Game = () => {
     </div>
   );
 
-
   return showOnboarding ? (
     <OnboardingPage onStart={handleStart} />
   ) : (
@@ -179,7 +238,7 @@ const Game = () => {
         {gameOver && (
         <div className="game-over-overlay">
             <div className="game-over-content">
-            <p className="feedback-message">{feedback[currentRow][0]}</p> {/* Display the feedback message */}
+            <p className="feedback-message">{gridState.feedback[gridState.currentRow][0]}</p> {/* Display the feedback message */}
             <button className="restart-button" onClick={handleStart}>
                 Start a New Game
             </button>

@@ -1,12 +1,14 @@
 
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
+const cors = require('cors');
+
 const gameRoutes = require('./routes/game');
+
+const { setupWebSocket } = require('./webSocketManager');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json());
