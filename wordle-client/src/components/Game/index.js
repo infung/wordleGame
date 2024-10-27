@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import OnboardingPage from "../OnboardingPage";
 import {
   startGame,
@@ -36,31 +36,36 @@ const Game = () => {
   const gridRef = useRef(gridState);
   const guessRef = useRef(currentGuess);
   const playerRef = useRef(playerId);
+  const gameIdRef = useRef(gameId);
+  const gameOverRef = useRef(gameOver);
+  const onboardingRef = useRef(showOnboarding);
 
   const ws = useRef(null);
 
-  const handlePhysicalKeyPress = (event) => {
+  // make sure the listener is always the same for each render
+  const handlePhysicalKeyPress = useCallback((event) => {
     handleKeyPress(event.key);
-  };
+  }, []);
 
   // Effect to handle physical keyboard input
   useEffect(() => {
-    if (!showOnboarding) {
-      window.addEventListener("keydown", handlePhysicalKeyPress);
-    } else {
+    if (showOnboarding) {
       window.removeEventListener("keydown", handlePhysicalKeyPress);
+    } else {
+      window.addEventListener("keydown", handlePhysicalKeyPress);
     }
 
     return () => {
       window.removeEventListener("keydown", handlePhysicalKeyPress);
     };
-  }, [showOnboarding, isPlayerJoined]);
+  }, [showOnboarding]);
 
   useEffect(() => {
     if (isCreator) {
       window.removeEventListener("keydown", handlePhysicalKeyPress);
+    } else {
+      window.addEventListener("keydown", handlePhysicalKeyPress);
     }
-    console.log("isCreator", isCreator);
   }, [isCreator]);
 
   // Update grid with the current guess
@@ -89,6 +94,15 @@ const Game = () => {
   useEffect(() => {
     guessRef.current = currentGuess;
   }, [currentGuess]);
+  useEffect(() => {
+    gameOverRef.current = gameOver;
+  }, [gameOver]);
+  useEffect(() => {
+    onboardingRef.current = showOnboarding;
+  }, [showOnboarding]);
+  useEffect(() => {
+    gameIdRef.current = gameId;
+  }, [gameId]);
 
   const onGuessReceived = (data) => {
     const { playerId, feedback, gameOver, guess, creatorFeedback, creator } =
@@ -139,6 +153,7 @@ const Game = () => {
     setIsCreator(playerRef.current === creator);
     setGameOver(false);
     setCurrentGuess("");
+    guessRef.current = "";
     setIsPlayerJoined(playerId);
     setGridState({
       grid: Array(maxRounds)
@@ -191,8 +206,9 @@ const Game = () => {
   };
 
   const handlRestart = async (newAnswer) => {
-    console.log("restart game", newAnswer);
     await restartGame(gameId, playerId, newAnswer);
+
+    window.removeEventListener("keydown", handlePhysicalKeyPress);
   };
 
   // Quit the current game
@@ -245,12 +261,14 @@ const Game = () => {
 
   // Handle virtual and physical key presses
   const handleKeyPress = (key) => {
-    if (gameOver || showOnboarding) return;
+    if (gameOverRef.current || onboardingRef.current) return;
 
     const currentGuess = guessRef.current;
+    const gameId = gameIdRef.current;
+    const playerId = playerRef.current;
 
     if (key === "Enter" && currentGuess.length === 5) {
-      handleSubmit(currentGuess); // Submit guess
+      handleSubmit(gameId, playerId, currentGuess); // Submit guess
     } else if (key === "Backspace") {
       setCurrentGuess(currentGuess.slice(0, -1)); // Remove last character
     } else if (/^[a-zA-Z]$/.test(key) && currentGuess.length < 5) {
@@ -277,8 +295,13 @@ const Game = () => {
     return `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
   };
 
-  // Submit the current guess to the server
-  const handleSubmit = async (currentGuess) => {
+  /**
+   * Submit the current guess to the server, used by keyboard event which will not have access to the current state
+   * @param {*} gameId
+   * @param {*} playerId
+   * @param {*} currentGuess
+   */
+  const handleSubmit = async (gameId, playerId, currentGuess) => {
     try {
       await submitGuess(gameId, playerId, currentGuess);
     } catch (error) {
@@ -287,7 +310,8 @@ const Game = () => {
   };
 
   const handleSubmitFromUi = () => {
-    handleSubmit(currentGuess);
+    // directly get value from current state
+    handleSubmit(gameId, playerId, currentGuess);
   };
 
   // Render the game grid
