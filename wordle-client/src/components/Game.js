@@ -31,18 +31,24 @@ const Game = () => {
   );
   const ws = useRef(null);
 
+  const handlePhysicalKeyPress = (event) => {
+    handleKeyPress(event.key);
+  };
+
   // Effect to handle physical keyboard input
   useEffect(() => {
-    const handlePhysicalKeyPress = (event) => {
-      handleKeyPress(event.key);
-    };
-
     window.addEventListener("keydown", handlePhysicalKeyPress);
 
     return () => {
       window.removeEventListener("keydown", handlePhysicalKeyPress);
     };
   }, [currentGuess, gameOver, showOnboarding]);
+
+  useEffect(() => {
+    if (isMultiPlayer) {
+      window.removeEventListener("keydown", handlePhysicalKeyPress);
+    }
+  }, [isMultiPlayer]);
 
   const initializeWs = (gameId, playerId) => {
     if (gameId && playerId) {
@@ -104,6 +110,12 @@ const Game = () => {
       const { gameId, maxRounds, playerId } = await startGame({
         word: guessWord,
       });
+
+      // multiplayer
+      if (guessWord) {
+        setIsMultiPlayer(true);
+      }
+
       // Initialize game state
       setGameId(gameId);
       setPlayerId(playerId);
@@ -250,6 +262,7 @@ const Game = () => {
       {keys.map((key) => (
         <button
           key={key}
+          disabled={isMultiPlayer}
           onClick={() => handleKeyPress(key)}
           className="key"
           style={{ backgroundColor: getKeyColor(keyFrequency[key]) }}
@@ -260,13 +273,14 @@ const Game = () => {
       <button
         className="key special"
         onClick={() => handleKeyPress("Enter")}
-        disabled={currentGuess.length < 5}
+        disabled={currentGuess.length < 5 || isMultiPlayer}
       >
         ENTER
       </button>
       <button
         className="key special"
         onClick={() => handleKeyPress("Backspace")}
+        disabled={currentGuess.length === 0 || isMultiPlayer}
       >
         ⌫
       </button>
