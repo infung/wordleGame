@@ -11,10 +11,7 @@ const Game = () => {
   const [gameOver, setGameOver] = useState(false);
   const [gameId, setGameId] = useState(null);
   const [playerId, setPlayerId] = useState(null);
-  // const [grid, setGrid] = useState();
-  // const [currentRow, setCurrentRow] = useState(0);
   const [currentGuess, setCurrentGuess] = useState("");
-  // const [feedback, setFeedback] = useState();
   const [gridState, setGridState] = useState({
     currentRow: 0,
     feedback: Array(6).fill([]),
@@ -203,7 +200,6 @@ const Game = () => {
     currentGuess.split("").forEach((letter, index) => {
       newGrid[currentRow][index] = letter;
     });
-    // setGrid(newGrid);
     setGridState({
       ...gridState,
       grid: newGrid,
