@@ -81,4 +81,37 @@ const submitGuess = (req, res) => {
   res.status(200).json({ message: "Guess processed and broadcasted" });
 };
 
-module.exports = { startGame, joinGame, submitGuess };
+// Handle a player quitting the game
+const quitGame = (req, res) => {
+  const { gameId, playerId } = req.body;
+  const game = games[gameId];
+
+  if (!game) {
+    return res.status(404).json({ error: "Game not found" });
+  }
+
+  game.removePlayer(playerId);
+
+  // If no players are left, delete the game
+  if (game.players.length === 0) {
+    delete games[gameId];
+  }
+
+  // Notify other players that a player has quit
+  const clients = getClients();
+  if (clients[gameId]) {
+    Object.values(clients[gameId]).forEach((client) => {
+      client.send(
+        JSON.stringify({
+          type: "playerQuit",
+          playerId,
+          creator: game.creator,
+        })
+      );
+    });
+  }
+
+  res.status(200).json({ message: "Game quited" });
+};
+
+module.exports = { startGame, joinGame, submitGuess, quitGame };

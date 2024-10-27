@@ -24,3 +24,11 @@ export const joinGame = async (gameId) => {
   const response = await axios.post(`${API_URL}/api/join`, { gameId });
   return response.data; // Return player ID
 };
+
+export const quitGame = async (gameId, playerId) => {
+  const response = await axios.post(`${API_URL}/api/quit`, {
+    gameId,
+    playerId,
+  });
+  return response.data; // Return feedback;
+};

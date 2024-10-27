@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import OnboardingPage from "./OnboardingPage";
-import { startGame, submitGuess, joinGame } from "../api";
-import "./Game.css";
+import OnboardingPage from "../OnboardingPage";
+import { startGame, submitGuess, joinGame, quitGame } from "../../api";
+import FinishModal from "./FinishModal";
+import "./style.css";
 
 const keys = "QWERTYUIOPASDFGHJKLZXCVBNM".split("");
 
 const Game = () => {
   // State variables
   const [showOnboarding, setShowOnboarding] = useState(true);
-  const [isMultiPlayer, setIsMultiPlayer] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
   const [isPlayerJoined, setIsPlayerJoined] = useState("");
   const [gameOver, setGameOver] = useState(false);
   const [gameId, setGameId] = useState(null);
@@ -21,14 +22,16 @@ const Game = () => {
       .fill("")
       .map(() => Array(5).fill("")),
   });
+  const [keyFrequency, setKeyFrequency] = useState(
+    keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {})
+  );
+
+  // to workaround bounded scope in ws
   const gridRef = useRef(gridState);
   const guessRef = useRef(currentGuess);
   const playerRef = useRef(playerId);
   const joinedRef = useRef(isPlayerJoined);
-
-  const [keyFrequency, setKeyFrequency] = useState(
-    keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {})
-  );
+  const creatorRef = useRef(isCreator);
   const ws = useRef(null);
 
   const handlePhysicalKeyPress = (event) => {
@@ -45,10 +48,43 @@ const Game = () => {
   }, [currentGuess, gameOver, showOnboarding]);
 
   useEffect(() => {
-    if (isMultiPlayer) {
+    if (isCreator) {
       window.removeEventListener("keydown", handlePhysicalKeyPress);
     }
-  }, [isMultiPlayer]);
+  }, [isCreator]);
+
+  // Update grid with the current guess
+  useEffect(() => {
+    const { currentRow, grid } = gridState;
+
+    const newGrid = [...grid];
+    // Clear the current row first
+    newGrid[currentRow] = Array(5).fill("");
+    // Fill with current guess
+    currentGuess.split("").forEach((letter, index) => {
+      newGrid[currentRow][index] = letter;
+    });
+    setGridState({
+      ...gridState,
+      grid: newGrid,
+    });
+  }, [currentGuess, gridState.currentRow]);
+
+  useEffect(() => {
+    joinedRef.current = isPlayerJoined;
+  }, [isPlayerJoined]);
+  useEffect(() => {
+    playerRef.current = playerId;
+  }, [playerId]);
+  useEffect(() => {
+    gridRef.current = gridState;
+  }, [gridState]);
+  useEffect(() => {
+    guessRef.current = currentGuess;
+  }, [currentGuess]);
+  useEffect(() => {
+    creatorRef.current = isCreator;
+  }, [isCreator]);
 
   const onGuessReceived = (data) => {
     const { playerId, feedback, gameOver, guess, creatorFeedback, creator } =
@@ -77,20 +113,21 @@ const Game = () => {
       feedback: updatedFeedback,
       currentRow: gameOver ? currentRow : currentRow + 1,
     };
-    gridRef.current = updatedGridState;
     setGridState(updatedGridState);
 
     if (gameOver) {
       setGameOver(true); // End game if over
     } else {
-      guessRef.current = "";
       setCurrentGuess("");
     }
   };
 
   const onPlayerJoined = (data) => {
-    joinedRef.current = data.playerId;
     setIsPlayerJoined(data.playerId);
+  };
+
+  const onPlayerQuit = (data) => {
+    setShowOnboarding(true);
   };
 
   const initializeWs = (gameId, playerId) => {
@@ -113,6 +150,9 @@ const Game = () => {
           case "playerJoined":
             onPlayerJoined(data);
             break;
+          case "playerQuit":
+            onPlayerQuit(data);
+            break;
           default:
             break;
         }
@@ -128,41 +168,37 @@ const Game = () => {
     handleStart("");
   };
 
+  // Quit the current game
+  const handleQuit = async () => {
+    await quitGame(gameId, playerId);
+  };
+
   // Start a new game
   const handleStart = async (guessWord) => {
-    try {
-      const { gameId, maxRounds, playerId } = await startGame({
-        word: guessWord,
-      });
+    const { gameId, playerId, maxRounds } = await startGame({
+      word: guessWord,
+    });
 
-      // multiplayer
-      if (guessWord) {
-        setIsMultiPlayer(true);
-      }
-
-      // Initialize game state
-      setGameId(gameId);
-      setPlayerId(playerId);
-      setGridState({
-        grid: Array(maxRounds)
-          .fill("")
-          .map(() => Array(5).fill("")),
-        feedback: Array(maxRounds).fill([]),
-        currentRow: 0,
-      });
-      setShowOnboarding(false);
-      setGameOver(false);
-      setCurrentGuess("");
-      setKeyFrequency(keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {}));
-
-      initializeWs(gameId, playerId);
-    } catch (error) {
-      console.error("Error starting the game:", error);
+    // multiplayer
+    if (guessWord) {
+      setIsCreator(true);
     }
+
+    InitializeGame(gameId, playerId, maxRounds);
+
+    initializeWs(gameId, playerId);
   };
 
   const handleJoin = async (gameId) => {
     const { playerId, maxRounds } = await joinGame(gameId);
+
+    InitializeGame(gameId, playerId, maxRounds);
+
+    initializeWs(gameId, playerId);
+  };
+
+  const InitializeGame = (gameId, playerId, maxRounds) => {
+    // Initialize game state
     setGameId(gameId);
     setPlayerId(playerId);
     setGridState({
@@ -175,9 +211,8 @@ const Game = () => {
     setShowOnboarding(false);
     setGameOver(false);
     setCurrentGuess("");
+    setIsPlayerJoined("");
     setKeyFrequency(keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {}));
-
-    initializeWs(gameId, playerId);
   };
 
   // Handle virtual and physical key presses
@@ -212,23 +247,6 @@ const Game = () => {
     return `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
   };
 
-  // Update grid with the current guess
-  useEffect(() => {
-    const { currentRow, grid } = gridState;
-
-    const newGrid = [...grid];
-    // Clear the current row first
-    newGrid[currentRow] = Array(5).fill("");
-    // Fill with current guess
-    currentGuess.split("").forEach((letter, index) => {
-      newGrid[currentRow][index] = letter;
-    });
-    setGridState({
-      ...gridState,
-      grid: newGrid,
-    });
-  }, [currentGuess, gridState.currentRow]);
-
   // Submit the current guess to the server
   const handleSubmit = async () => {
     try {
@@ -237,19 +255,6 @@ const Game = () => {
       console.error("Error submitting guess:", error);
     }
   };
-
-  useEffect(() => {
-    joinedRef.current = isPlayerJoined;
-  }, [isPlayerJoined]);
-  useEffect(() => {
-    playerRef.current = playerId;
-  }, [playerId]);
-  useEffect(() => {
-    gridRef.current = gridState;
-  }, [gridState]);
-  useEffect(() => {
-    guessRef.current = currentGuess;
-  }, [currentGuess]);
 
   // Render the game grid
   const renderGrid = () => {
@@ -283,7 +288,7 @@ const Game = () => {
       {keys.map((key) => (
         <button
           key={key}
-          disabled={isMultiPlayer}
+          disabled={isCreator}
           onClick={() => handleKeyPress(key)}
           className="key"
           style={{ backgroundColor: getKeyColor(keyFrequency[key]) }}
@@ -294,14 +299,14 @@ const Game = () => {
       <button
         className="key special"
         onClick={() => handleKeyPress("Enter")}
-        disabled={currentGuess.length < 5 || isMultiPlayer}
+        disabled={currentGuess.length < 5 || isCreator}
       >
         ENTER
       </button>
       <button
         className="key special"
         onClick={() => handleKeyPress("Backspace")}
-        disabled={currentGuess.length === 0 || isMultiPlayer}
+        disabled={currentGuess.length === 0 || isCreator}
       >
         ⌫
       </button>
@@ -315,24 +320,18 @@ const Game = () => {
       <h3>{gameId && `Room Id: ${gameId}`}</h3>
 
       <h3>
-        {isMultiPlayer && isPlayerJoined && `Player [${isPlayerJoined}] joined`}
-        {isMultiPlayer && !isPlayerJoined && `Waiting for other player to join`}
+        {isCreator && isPlayerJoined && `Player [${isPlayerJoined}] joined`}
+        {isCreator && !isPlayerJoined && `Waiting for other player to join`}
       </h3>
 
       <div className="game-board">
         {renderGrid()}
         {gameOver && (
-          <div className="game-over-overlay">
-            <div className="game-over-content">
-              <p className="feedback-message">
-                {gridState.feedback[gridState.currentRow][0]}
-              </p>{" "}
-              {/* Display the feedback message */}
-              <button className="restart-button" onClick={startSoloGame}>
-                Start a New Game
-              </button>
-            </div>
-          </div>
+          <FinishModal
+            message={gridState.feedback[gridState.currentRow][0]}
+            startNewGame={startSoloGame}
+            quitGame={handleQuit}
+          />
         )}
       </div>
       {renderKeyboard()}
