@@ -8,7 +8,28 @@
     color: #fff;
     text-align: center;
   }
-  
+
+.room-input {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 40px;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.join-button {
+    margin-top: 20px;
+    padding: 15px 80px;
+    background-color: #c9b458;
+    border: none;
+    border-radius: 5px;
+    color: #000;
+    font-size: 1.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 .play-button {
     margin-top: 80px;
     padding: 15px 80px;
