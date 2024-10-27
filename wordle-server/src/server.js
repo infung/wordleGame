@@ -1,12 +1,17 @@
+
 const express = require('express');
-const cors = require('cors');
+const http = require('http');
+const WebSocket = require('ws');
 const gameRoutes = require('./routes/game');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 app.use(cors()); // Enable CORS for all routes
-app.use(express.json()); // Middleware to parse JSON bodies
-app.use('/api', gameRoutes); // Use game routes under /api path
+app.use(express.json());
+app.use('/api', gameRoutes);
+setupWebSocket(server); // Initialize WebSocket
 
-const PORT = process.env.PORT || 3001; // Define server port
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); // Start server
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

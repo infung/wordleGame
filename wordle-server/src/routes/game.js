@@ -3,10 +3,9 @@ const { startGame, submitGuess } = require('../controllers/gameController');
 const { validateGuess } = require('../middleware/validate');
 const router = express.Router();
 
-// Route to start a new game
-router.post('/start', startGame);
-
-// Route to submit a guess with validation
-router.post('/guess', validateGuess, submitGuess);
+// Define routes for game actions
+router.post('/start', startGame); // Start a new game
+router.post('/join', joinGame); // Join an existing game
+router.post('/guess', validateGuess, submitGuess); // Submit a guess
 
 module.exports = router;
