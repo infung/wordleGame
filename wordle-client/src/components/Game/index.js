@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import OnboardingPage from "../OnboardingPage";
-import { startGame, submitGuess, joinGame, quitGame } from "../../api";
+import {
+  startGame,
+  submitGuess,
+  joinGame,
+  quitGame,
+  restartGame,
+} from "../../api";
 import FinishModal from "./FinishModal";
 import "./style.css";
 
@@ -30,8 +36,7 @@ const Game = () => {
   const gridRef = useRef(gridState);
   const guessRef = useRef(currentGuess);
   const playerRef = useRef(playerId);
-  const joinedRef = useRef(isPlayerJoined);
-  const creatorRef = useRef(isCreator);
+
   const ws = useRef(null);
 
   const handlePhysicalKeyPress = (event) => {
@@ -40,17 +45,22 @@ const Game = () => {
 
   // Effect to handle physical keyboard input
   useEffect(() => {
-    window.addEventListener("keydown", handlePhysicalKeyPress);
+    if (!showOnboarding) {
+      window.addEventListener("keydown", handlePhysicalKeyPress);
+    } else {
+      window.removeEventListener("keydown", handlePhysicalKeyPress);
+    }
 
     return () => {
       window.removeEventListener("keydown", handlePhysicalKeyPress);
     };
-  }, [currentGuess, gameOver, showOnboarding]);
+  }, [showOnboarding, isPlayerJoined]);
 
   useEffect(() => {
     if (isCreator) {
       window.removeEventListener("keydown", handlePhysicalKeyPress);
     }
+    console.log("isCreator", isCreator);
   }, [isCreator]);
 
   // Update grid with the current guess
@@ -71,9 +81,6 @@ const Game = () => {
   }, [currentGuess, gridState.currentRow]);
 
   useEffect(() => {
-    joinedRef.current = isPlayerJoined;
-  }, [isPlayerJoined]);
-  useEffect(() => {
     playerRef.current = playerId;
   }, [playerId]);
   useEffect(() => {
@@ -82,9 +89,6 @@ const Game = () => {
   useEffect(() => {
     guessRef.current = currentGuess;
   }, [currentGuess]);
-  useEffect(() => {
-    creatorRef.current = isCreator;
-  }, [isCreator]);
 
   const onGuessReceived = (data) => {
     const { playerId, feedback, gameOver, guess, creatorFeedback, creator } =
@@ -130,6 +134,21 @@ const Game = () => {
     setShowOnboarding(true);
   };
 
+  const onGameRestarted = (data) => {
+    const { creator, maxRounds, playerId } = data;
+    setIsCreator(playerRef.current === creator);
+    setGameOver(false);
+    setCurrentGuess("");
+    setIsPlayerJoined(playerId);
+    setGridState({
+      grid: Array(maxRounds)
+        .fill("")
+        .map(() => Array(5).fill("")),
+      feedback: Array(maxRounds).fill([]),
+      currentRow: 0,
+    });
+  };
+
   const initializeWs = (gameId, playerId) => {
     if (gameId && playerId) {
       ws.current = new WebSocket("ws://localhost:3001");
@@ -153,6 +172,9 @@ const Game = () => {
           case "playerQuit":
             onPlayerQuit(data);
             break;
+          case "gameRestarted":
+            onGameRestarted(data);
+            break;
           default:
             break;
         }
@@ -166,6 +188,11 @@ const Game = () => {
 
   const startSoloGame = () => {
     handleStart("");
+  };
+
+  const handlRestart = async (newAnswer) => {
+    console.log("restart game", newAnswer);
+    await restartGame(gameId, playerId, newAnswer);
   };
 
   // Quit the current game
@@ -184,7 +211,8 @@ const Game = () => {
       setIsCreator(true);
     }
 
-    InitializeGame(gameId, playerId, maxRounds);
+    initializeGame(gameId, playerId, maxRounds);
+    setIsPlayerJoined("");
 
     initializeWs(gameId, playerId);
   };
@@ -192,12 +220,13 @@ const Game = () => {
   const handleJoin = async (gameId) => {
     const { playerId, maxRounds } = await joinGame(gameId);
 
-    InitializeGame(gameId, playerId, maxRounds);
+    initializeGame(gameId, playerId, maxRounds);
+    setIsPlayerJoined(playerId);
 
     initializeWs(gameId, playerId);
   };
 
-  const InitializeGame = (gameId, playerId, maxRounds) => {
+  const initializeGame = (gameId, playerId, maxRounds) => {
     // Initialize game state
     setGameId(gameId);
     setPlayerId(playerId);
@@ -211,7 +240,6 @@ const Game = () => {
     setShowOnboarding(false);
     setGameOver(false);
     setCurrentGuess("");
-    setIsPlayerJoined("");
     setKeyFrequency(keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {}));
   };
 
@@ -219,8 +247,10 @@ const Game = () => {
   const handleKeyPress = (key) => {
     if (gameOver || showOnboarding) return;
 
+    const currentGuess = guessRef.current;
+
     if (key === "Enter" && currentGuess.length === 5) {
-      handleSubmit(); // Submit guess
+      handleSubmit(currentGuess); // Submit guess
     } else if (key === "Backspace") {
       setCurrentGuess(currentGuess.slice(0, -1)); // Remove last character
     } else if (/^[a-zA-Z]$/.test(key) && currentGuess.length < 5) {
@@ -248,12 +278,16 @@ const Game = () => {
   };
 
   // Submit the current guess to the server
-  const handleSubmit = async () => {
+  const handleSubmit = async (currentGuess) => {
     try {
       await submitGuess(gameId, playerId, currentGuess);
     } catch (error) {
       console.error("Error submitting guess:", error);
     }
+  };
+
+  const handleSubmitFromUi = () => {
+    handleSubmit(currentGuess);
   };
 
   // Render the game grid
@@ -274,7 +308,7 @@ const Game = () => {
           </div>
         ))}
         {rowIndex === currentRow && currentGuess.length === 5 && (
-          <button className="submit-button" onClick={handleSubmit}>
+          <button className="submit-button" onClick={handleSubmitFromUi}>
             ENTER
           </button>
         )}
@@ -330,7 +364,10 @@ const Game = () => {
           <FinishModal
             message={gridState.feedback[gridState.currentRow][0]}
             startNewGame={startSoloGame}
+            restartGame={handlRestart}
             quitGame={handleQuit}
+            isCreator={isCreator}
+            isPlayerJoined={isPlayerJoined}
           />
         )}
       </div>

@@ -30,5 +30,14 @@ export const quitGame = async (gameId, playerId) => {
     gameId,
     playerId,
   });
-  return response.data; // Return feedback;
+  return response.data; // Return msg;
+};
+
+export const restartGame = async (gameId, playerId, newAnswer) => {
+  const response = await axios.post(`${API_URL}/api/restart`, {
+    gameId,
+    playerId,
+    newAnswer,
+  });
+  return response.data; // Return msg;
 };

@@ -40,6 +40,7 @@ const joinGame = (req, res) => {
         JSON.stringify({
           type: "playerJoined",
           playerId,
+          creator: game.creator,
         })
       );
     });
@@ -81,6 +82,35 @@ const submitGuess = (req, res) => {
   res.status(200).json({ message: "Guess processed and broadcasted" });
 };
 
+// Restart an existing game with a new answer
+const restartGame = (req, res) => {
+  const { gameId, playerId, newAnswer } = req.body;
+  const game = games[gameId];
+
+  if (!game) {
+    return res.status(404).json({ error: "Game not found" });
+  }
+
+  game.restartGame(playerId, newAnswer);
+
+  // Notify all players that the game has been restarted
+  const clients = getClients();
+  if (clients[gameId]) {
+    Object.values(clients[gameId]).forEach((client) => {
+      client.send(
+        JSON.stringify({
+          type: "gameRestarted",
+          creator: playerId,
+          playerId: game.creator,
+          maxRounds: game.maxRounds,
+        })
+      );
+    });
+  }
+
+  res.status(200).json({ message: "Game restarted" });
+};
+
 // Handle a player quitting the game
 const quitGame = (req, res) => {
   const { gameId, playerId } = req.body;
@@ -88,13 +118,6 @@ const quitGame = (req, res) => {
 
   if (!game) {
     return res.status(404).json({ error: "Game not found" });
-  }
-
-  game.removePlayer(playerId);
-
-  // If no players are left, delete the game
-  if (game.players.length === 0) {
-    delete games[gameId];
   }
 
   // Notify other players that a player has quit
@@ -111,7 +134,9 @@ const quitGame = (req, res) => {
     });
   }
 
+  delete games[gameId];
+
   res.status(200).json({ message: "Game quited" });
 };
 
-module.exports = { startGame, joinGame, submitGuess, quitGame };
+module.exports = { startGame, joinGame, submitGuess, quitGame, restartGame };

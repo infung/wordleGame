@@ -11,14 +11,18 @@ class Game {
     this.answer = word;
   }
 
+  restartGame(creator, answer) {
+    this.creator = creator;
+    this.answer = answer;
+
+    Object.keys(this.players).forEach((playerId) => {
+      this.players[playerId] = { attempts: 0, guesses: [] };
+    });
+  }
+
   // Add a new player to the game
   addPlayer(playerId) {
     this.players[playerId] = { attempts: 0, guesses: [] };
-  }
-
-  // Remove a player from the game
-  removePlayer(playerId) {
-    delete this.players[playerId];
   }
 
   // Process a player's guess and return feedback
