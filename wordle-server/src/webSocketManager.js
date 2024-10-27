@@ -9,8 +9,6 @@ function setupWebSocket(server) {
   wss.on('connection', (ws) => {
     ws.on('message', (message) => {
       const { type, gameId, playerId } = JSON.parse(message);
-      console.log(JSON.parse(message));
-
       if (type === 'join') {
         if (!clients[gameId]) clients[gameId] = {};
         clients[gameId][playerId] = ws;
