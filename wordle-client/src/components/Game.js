@@ -12,6 +12,10 @@ const Game = () => {
   const [feedback, setFeedback] = useState(Array(6).fill([]));
   const [gameOver, setGameOver] = useState(false);
   const [gameId, setGameId] = useState(null);
+  const keys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('');
+  const [keyFrequency, setKeyFrequency] = useState(
+    keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {})
+  );
 
   // Effect to handle physical keyboard input
   useEffect(() => {
@@ -38,6 +42,7 @@ const Game = () => {
       setCurrentRow(0);
       setCurrentGuess('');
       setFeedback(Array(maxRounds).fill([]));
+      setKeyFrequency(keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {}));
     } catch (error) {
       console.error("Error starting the game:", error);
     }
@@ -53,17 +58,37 @@ const Game = () => {
       setCurrentGuess(currentGuess.slice(0, -1)); // Remove last character
     } else if (/^[a-zA-Z]$/.test(key) && currentGuess.length < 5) {
       setCurrentGuess(currentGuess + key.toUpperCase()); // Add character to guess
+      const upperKey = key.toUpperCase();
+      if (keys.includes(upperKey)) {
+        setKeyFrequency((prev) => ({
+          ...prev,
+          [upperKey]: prev[upperKey] + 1,
+        }));
+      }
     }
   };
 
-  // Update grid with the current guess
+  // Computes the color based on frequency
+  const getKeyColor = (frequency) => {
+    const maxFrequency = Math.max(...Object.values(keyFrequency));
+    const intensity = frequency / (maxFrequency || 1);
+    const lightGray = 160; // Lighter gray
+    const darkGray = 40;   // Darker gray
+    const grayValue = Math.floor(lightGray - intensity * (lightGray - darkGray));
+    return `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
+  };
+
+// Update grid with the current guess
   useEffect(() => {
     const newGrid = [...grid];
+    // Clear the current row first
+    newGrid[currentRow] = Array(5).fill('');
+    // Fill with current guess
     currentGuess.split('').forEach((letter, index) => {
       newGrid[currentRow][index] = letter;
     });
     setGrid(newGrid);
-  }, [currentGuess]);
+  }, [currentGuess, currentRow]);
 
   // Submit the current guess to the server
   const handleSubmit = async () => {
@@ -116,35 +141,34 @@ const Game = () => {
   };
 
   // Render the virtual keyboard
-  const renderKeyboard = () => {
-    const keys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('');
-    return (
-      <div className="keyboard">
-        {keys.map((key) => (
-          <button
-            key={key}
-            onClick={() => handleKeyPress(key)}
-            className="key"
-          >
-            {key}
-          </button>
-        ))}
+  const renderKeyboard = () => (
+    <div className="keyboard">
+      {keys.map((key) => (
         <button
-          className="key special"
-          onClick={() => handleKeyPress('Enter')}
-          disabled={currentGuess.length < 5}
+          key={key}
+          onClick={() => handleKeyPress(key)}
+          className="key"
+          style={{ backgroundColor: getKeyColor(keyFrequency[key]) }}
         >
-          ENTER
+          {key}
         </button>
-        <button
-          className="key special"
-          onClick={() => handleKeyPress('Backspace')}
-        >
-          ⌫
-        </button>
-      </div>
-    );
-  };
+      ))}
+      <button
+        className="key special"
+        onClick={() => handleKeyPress('Enter')}
+        disabled={currentGuess.length < 5}
+      >
+        ENTER
+      </button>
+      <button
+        className="key special"
+        onClick={() => handleKeyPress('Backspace')}
+      >
+        ⌫
+      </button>
+    </div>
+  );
+
 
   return showOnboarding ? (
     <OnboardingPage onStart={handleStart} />
