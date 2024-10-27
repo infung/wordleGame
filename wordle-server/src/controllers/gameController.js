@@ -32,6 +32,19 @@ const joinGame = (req, res) => {
 
   const playerId = Math.random().toString(36).substring(7);
   game.addPlayer(playerId);
+
+  const clients = getClients();
+  if (clients[gameId]) {
+    Object.values(clients[gameId]).forEach((client) => {
+      client.send(
+        JSON.stringify({
+          type: "playerJoined",
+          playerId,
+        })
+      );
+    });
+  }
+
   res.json({ playerId, maxRounds });
 };
 

@@ -3,11 +3,13 @@ import OnboardingPage from "./OnboardingPage";
 import { startGame, submitGuess, joinGame } from "../api";
 import "./Game.css";
 
+const keys = "QWERTYUIOPASDFGHJKLZXCVBNM".split("");
+
 const Game = () => {
   // State variables
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [isMultiPlayer, setIsMultiPlayer] = useState(false);
-  const keys = "QWERTYUIOPASDFGHJKLZXCVBNM".split("");
+  const [isPlayerJoined, setIsPlayerJoined] = useState("");
   const [gameOver, setGameOver] = useState(false);
   const [gameId, setGameId] = useState(null);
   const [playerId, setPlayerId] = useState(null);
@@ -22,6 +24,7 @@ const Game = () => {
   const gridRef = useRef(gridState);
   const guessRef = useRef(currentGuess);
   const playerRef = useRef(playerId);
+  const joinedRef = useRef(isPlayerJoined);
 
   const [keyFrequency, setKeyFrequency] = useState(
     keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {})
@@ -47,6 +50,49 @@ const Game = () => {
     }
   }, [isMultiPlayer]);
 
+  const onGuessReceived = (data) => {
+    const { playerId, feedback, gameOver, guess, creatorFeedback, creator } =
+      data;
+    const { currentRow, grid } = gridRef.current;
+
+    // to sync the guess with other player
+    if (playerId !== playerRef.current) {
+      guessRef.current = guess;
+    }
+    const currentGuess = guessRef.current;
+
+    // Update grid
+    const newGrid = [...grid];
+    newGrid[currentRow] = currentGuess.split("");
+
+    // Merge feedback
+    const updatedFeedback = [...gridRef.current.feedback];
+    updatedFeedback[currentRow] =
+      creator === playerRef.current && creatorFeedback
+        ? creatorFeedback
+        : feedback;
+
+    const updatedGridState = {
+      grid: newGrid,
+      feedback: updatedFeedback,
+      currentRow: gameOver ? currentRow : currentRow + 1,
+    };
+    gridRef.current = updatedGridState;
+    setGridState(updatedGridState);
+
+    if (gameOver) {
+      setGameOver(true); // End game if over
+    } else {
+      guessRef.current = "";
+      setCurrentGuess("");
+    }
+  };
+
+  const onPlayerJoined = (data) => {
+    joinedRef.current = data.playerId;
+    setIsPlayerJoined(data.playerId);
+  }
+
   const initializeWs = (gameId, playerId) => {
     if (gameId && playerId) {
       ws.current = new WebSocket("ws://localhost:3001");
@@ -58,36 +104,17 @@ const Game = () => {
       };
 
       ws.current.onmessage = async (event) => {
-        const { playerId, feedback, gameOver, guess, creatorFeedback, creator } = JSON.parse(event.data);
-        const { currentRow, grid } = gridRef.current;
+        const data = JSON.parse(event.data);
 
-        // to sync the guess with other player
-        if (playerId !== playerRef.current) {
-          guessRef.current = guess;
-        }
-        const currentGuess = guessRef.current;
-
-        // Update grid
-        const newGrid = [...grid];
-        newGrid[currentRow] = currentGuess.split("");
-
-        // Merge feedback
-        const updatedFeedback = [...gridRef.current.feedback];
-        updatedFeedback[currentRow] = creator === playerRef.current && creatorFeedback ? creatorFeedback : feedback;
-
-        const updatedGridState = {
-          grid: newGrid,
-          feedback: updatedFeedback,
-          currentRow: gameOver ? currentRow : currentRow + 1,
-        };
-        gridRef.current = updatedGridState;
-        setGridState(updatedGridState);
-
-        if (gameOver) {
-          setGameOver(true); // End game if over
-        } else {
-          guessRef.current = "";
-          setCurrentGuess("");
+        switch (data.type) {
+          case "guessResult":
+            onGuessReceived(data);
+            break;
+          case "playerJoined":
+            onPlayerJoined(data);
+            break;
+          default:
+            break;
         }
       };
 
@@ -209,19 +236,21 @@ const Game = () => {
   // Submit the current guess to the server
   const handleSubmit = async () => {
     try {
-      const result = await submitGuess(gameId, playerId, currentGuess);
+      await submitGuess(gameId, playerId, currentGuess);
     } catch (error) {
       console.error("Error submitting guess:", error);
     }
   };
 
   useEffect(() => {
+    joinedRef.current = isPlayerJoined;
+  }, [isPlayerJoined]);
+  useEffect(() => {
     playerRef.current = playerId;
   }, [playerId]);
   useEffect(() => {
     gridRef.current = gridState;
   }, [gridState]);
-
   useEffect(() => {
     guessRef.current = currentGuess;
   }, [currentGuess]);
@@ -287,6 +316,13 @@ const Game = () => {
     <OnboardingPage onStart={handleStart} onJoin={handleJoin} />
   ) : (
     <div className="game">
+      <h3>{gameId && `Room Id: ${gameId}`}</h3>
+
+      <h3>
+        {isMultiPlayer && isPlayerJoined && `Player [${isPlayerJoined}] joined`}
+        {isMultiPlayer && !isPlayerJoined && `Waiting for other player to join`}
+      </h3>
+
       <div className="game-board">
         {renderGrid()}
         {gameOver && (
