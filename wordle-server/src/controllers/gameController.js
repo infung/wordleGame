@@ -8,7 +8,7 @@ const startGame = (req, res) => {
   const answer = wordList[Math.floor(Math.random() * wordList.length)]; // Randomly pick a word from predefined word list
   const gameId = Math.random().toString(36).substring(7); // Generate a unique game ID
   games[gameId] = { answer, attempts: 0 }; // Initialize game with answer and attempts
-  res.json({ id: gameId }); // Respond with game ID
+  res.json({ id: gameId, maxRounds: maxRounds }); // Respond with game ID
 };
 
 // Submit a guess and provide feedback
@@ -38,7 +38,7 @@ const submitGuess = (req, res) => {
   // Check game over condition
   if (game.attempts >= maxRounds) {
     delete games[gameId];
-    return res.json({ feedback: [`You lose! The word was ${game.answer}`], gameOver: true });
+    return res.json({ feedback: [`You lose! The word was ${game.answer}!`], gameOver: true });
   }
 
   res.json({ feedback, gameOver: false }); // Respond with feedback
