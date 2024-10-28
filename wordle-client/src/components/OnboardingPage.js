@@ -127,7 +127,7 @@ const OnboardingPage = ({ onStart, onJoin }) => {
               type="text"
               ref={wordRef}
               onChange={handleWordChange}
-              placeholder="Enter words"
+              placeholder="Enter a valid 5-letter word"
               className="room-input"
             />
             <button
@@ -136,7 +136,7 @@ const OnboardingPage = ({ onStart, onJoin }) => {
               disabled={!canStart}
               onClick={startMultiPlayerGame}
             >
-              Start New Room
+              Start New Game
             </button>
           </div>
 

@@ -31,8 +31,9 @@
 }
 
 .play-button {
-    margin-top: 80px;
+    margin-top: 60px;
     padding: 15px 80px;
+    width: 400px;
     background-color: #c9b458;
     border: none;
     border-radius: 5px;

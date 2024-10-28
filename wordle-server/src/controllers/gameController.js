@@ -10,7 +10,7 @@ const startGame = (req, res) => {
   const gameId = Math.random().toString(36).substring(7);
   const playerId = Math.random().toString(36).substring(7);
 
-  const game = new Game(answer, playerId, maxRounds);
+  const game = new Game(answer.toLowerCase(), playerId, maxRounds);
   game.addPlayer(playerId);
 
   if (req.body.word) {
@@ -91,7 +91,7 @@ const restartGame = (req, res) => {
     return res.status(404).json({ error: "Game not found" });
   }
 
-  game.restartGame(playerId, newAnswer);
+  game.restartGame(playerId, newAnswer.toLowerCase());
 
   // Notify all players that the game has been restarted
   const clients = getClients();

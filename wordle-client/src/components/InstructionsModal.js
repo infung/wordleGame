@@ -17,6 +17,17 @@ const InstructionsModal = ({ show, onClose }) => {
             <li>Each guess must be a valid 5-letter word.</li>
             <li>The color of the tiles will change to show how close your guess was to the word.</li>
           </ul>
+          <h3>Solo Play</h3>
+          <ul>
+            <li>You have a fixed number of rounds to guess the word.</li>
+            <li>Use the clues provided to make educated guesses.</li>
+          </ul>
+          <h3>Multiplayers Play</h3>
+          <ul>
+            <li>Player A sets a word for Player B to guess.</li>
+            <li>Player B attempts to guess the word within the allowed rounds.</li>
+            <li>Roles switch after each round, allowing Player B to set a new word if the previous round concludes.</li>
+          </ul>
           <h3>Examples</h3>
           <div className="example">
             <div className="example-row">
@@ -49,5 +60,4 @@ const InstructionsModal = ({ show, onClose }) => {
     );
   };
   
-  export default InstructionsModal;
-  
+export default InstructionsModal;
