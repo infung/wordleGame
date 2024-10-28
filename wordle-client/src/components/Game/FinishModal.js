@@ -10,7 +10,7 @@ const FinishModal = ({
 }) => {
   const startGame = () => {
     if (isPlayerJoined !== "") {
-      restartGame(wordRef.current.value);
+      restartGame(wordRef.current.value.toLowerCase());
     } else {
       startNewGame();
     }
@@ -28,23 +28,24 @@ const FinishModal = ({
       <div className="game-over-content">
         {/* Display the feedback message */}
         <p className="feedback-message">{message}</p>{" "}
+        {/* Single Player Mode*/}
         {!isCreator && isPlayerJoined === "" && (
           <button
             className="restart-button"
             onClick={startGame}
-            disabled={!canStart}
           >
             Start a New Game
           </button>
         )}
+        {/* MultiPlayers Mode*/}
         {!isCreator && isPlayerJoined !== "" && (
-          <div style={{ display: "flex" }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <input
               type="text"
               ref={wordRef}
               style={{ marginTop: "20px" }}
               onChange={handleWordChange}
-              placeholder="Enter words"
+              placeholder="  Enter words"
               className="room-input"
             />
             <button

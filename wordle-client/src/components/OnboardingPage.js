@@ -35,7 +35,7 @@ const OnboardingPage = ({ onStart, onJoin }) => {
 
   const startMultiPlayerGame = async () => {
     try {
-      onStart(wordRef.current.value);
+      onStart(wordRef.current.value.toLowerCase());
     } catch (error) {
       setErrorState({
         show: true,
@@ -110,7 +110,7 @@ const OnboardingPage = ({ onStart, onJoin }) => {
               type="text"
               ref={roomRef}
               onChange={handleRoomChange}
-              placeholder="Enter room code"
+              placeholder="  Enter room code"
               className="room-input"
             />
             <button
@@ -127,7 +127,7 @@ const OnboardingPage = ({ onStart, onJoin }) => {
               type="text"
               ref={wordRef}
               onChange={handleWordChange}
-              placeholder="Enter a valid 5-letter word"
+              placeholder="  Enter a valid 5-letter word"
               className="room-input"
             />
             <button

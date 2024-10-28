@@ -120,9 +120,12 @@
   }
   
   .game-over-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     background-color: #333;
     color: #fff;
-    padding: 40px;
+    padding: 50px;
     border-radius: 5px;
     width: 90%;
     max-width: 560px;
@@ -141,10 +144,17 @@
     cursor: pointer;
     font-size: 1.2rem;
     font-weight: 800;
+    width: 300px;
   }
   
   .restart-button:hover {
     background-color: #b8a34c;
+  }
+
+  .restart-button:disabled {
+    background-color: #8b7e3c;
+    cursor: not-allowed;
+    opacity: 0.7;
   }
 
   .feedback-message {

@@ -206,7 +206,7 @@ const Game = () => {
   };
 
   const handlRestart = async (newAnswer) => {
-    await restartGame(gameId, playerId, newAnswer);
+    await restartGame(gameId, playerId, newAnswer.toLowerCase());
 
     window.removeEventListener("keydown", handlePhysicalKeyPress);
   };
@@ -219,7 +219,7 @@ const Game = () => {
   // Start a new game
   const handleStart = async (guessWord) => {
     const { gameId, playerId, maxRounds } = await startGame({
-      word: guessWord,
+      word: guessWord.toLowerCase(),
     });
 
     // multiplayer
