@@ -108,14 +108,14 @@ cd wordleGame
 2. **Player A Setup:**
    - Player A clicks the 'Multiplayers Play' button to enter Multiplayer Mode.
    - Provide a 5-letter word in the second input box.
-   - Click 'Start a New Game' to enter the game room and receive a room ID.
+   - Click 'Start New Game' to enter the game room and receive a room ID.
 
 3. **Share Room ID:**
-   - Player A shares the room ID with Player B.
+   - Player A shares the room code with Player B.
 
 4. **Player B Setup:**
    - Player B clicks the 'Multiplayers Play' button to enter Multiplayer Mode.
-   - Enter the room ID in the first input box.
+   - Enter the room code in the first input box.
    - Click 'Join Room' to enter the game room.
 
 5. **Player B Gameplay:**
