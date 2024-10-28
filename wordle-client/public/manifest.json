@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Wordle Game",
+  "name": "Yan Feng's Wordle Game",
   "icons": [
     {
       "src": "favicon.ico",

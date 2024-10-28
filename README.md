@@ -1,5 +1,7 @@
 # Wordle Game Setup and Instructions
 
+![Landing Page](./demo.png)
+
 ## Prerequisites
 
 Ensure you have the following installed:
@@ -103,7 +105,7 @@ cd wordleGame
 ### Multiplayer Mode:
 
 1. **Start Two React Clients:**
-   - Run two instances of the React application (e.g., open two terminal tabs to run `npm start` on different port and using two browser tabs).
+   - Run two instances of the React application (e.g., using two terminal tabs to run `npm start` on different port and using two browser tabs).
 
 2. **Player A Setup:**
    - Player A clicks the 'Multiplayers Play' button to enter Multiplayer Mode.
